@@ -9,7 +9,7 @@ const Footer = () => {
           <Logo />
           
           <p className="text-sm text-muted-foreground flex items-center gap-2">
-            Made with <Heart className="w-4 h-4 text-primary fill-current" /> for couples everywhere
+            Made with <Heart className="w-4 h-4 text-primary fill-current" /> for personal & relationship growth
           </p>
 
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
