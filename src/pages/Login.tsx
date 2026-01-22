@@ -14,7 +14,7 @@ type Step = "mode" | "email" | "otp";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signInWithOtp, verifyOtp, signInWithGoogle } = useAuth();
+  const { sendOtp, verifyOtp, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<LoginMode>("individual");
   const [step, setStep] = useState<Step>("mode");
   const [email, setEmail] = useState("");
@@ -31,7 +31,7 @@ const Login = () => {
     if (!email) return;
 
     setLoading(true);
-    const { error } = await signInWithOtp(email);
+    const { error } = await sendOtp(email);
     setLoading(false);
 
     if (error) {

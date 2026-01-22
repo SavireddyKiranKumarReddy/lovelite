@@ -14,7 +14,7 @@ type Step = "mode" | "details" | "otp";
 
 const Register = () => {
   const navigate = useNavigate();
-  const { signInWithOtp, verifyOtp, signInWithGoogle } = useAuth();
+  const { sendOtp, verifyOtp, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<RegisterMode>("individual");
   const [step, setStep] = useState<Step>("mode");
   const [name, setName] = useState("");
@@ -32,7 +32,7 @@ const Register = () => {
     if (!email || !name) return;
 
     setLoading(true);
-    const { error } = await signInWithOtp(email);
+    const { error } = await sendOtp(email);
     setLoading(false);
 
     if (error) {
@@ -48,7 +48,7 @@ const Register = () => {
     if (otp.length !== 6) return;
 
     setLoading(true);
-    const { error } = await verifyOtp(email, otp);
+    const { error } = await verifyOtp(email, otp, name);
     setLoading(false);
 
     if (error) {

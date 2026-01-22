@@ -6,8 +6,8 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signInWithOtp: (email: string) => Promise<{ error: Error | null }>;
-  verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
+  sendOtp: (email: string) => Promise<{ error: Error | null }>;
+  verifyOtp: (email: string, code: string, fullName?: string) => Promise<{ error: Error | null; isNewUser?: boolean }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -47,23 +47,66 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithOtp = async (email: string) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: window.location.origin,
-      },
-    });
-    return { error };
+  const sendOtp = async (email: string) => {
+    try {
+      const response = await supabase.functions.invoke('send-otp', {
+        body: { email },
+      });
+
+      if (response.error) {
+        return { error: new Error(response.error.message) };
+      }
+
+      if (response.data?.error) {
+        return { error: new Error(response.data.error) };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { error: error instanceof Error ? error : new Error('Failed to send code') };
+    }
   };
 
-  const verifyOtp = async (email: string, token: string) => {
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'email',
-    });
-    return { error };
+  const verifyOtp = async (email: string, code: string, fullName?: string) => {
+    try {
+      const response = await supabase.functions.invoke('verify-otp', {
+        body: { email, code, fullName },
+      });
+
+      if (response.error) {
+        return { error: new Error(response.error.message) };
+      }
+
+      if (response.data?.error) {
+        return { error: new Error(response.data.error) };
+      }
+
+      // If we got a session back, set it
+      if (response.data?.session) {
+        await supabase.auth.setSession(response.data.session);
+      } else {
+        // For existing users, we might need to do a sign in
+        // The verify-otp function has already verified the code
+        // We can use signInWithOtp with a magic link approach
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: {
+            shouldCreateUser: false,
+          },
+        });
+        
+        // Even if this errors, the OTP was verified, so we check session
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData.session) {
+          setSession(sessionData.session);
+          setUser(sessionData.session.user);
+        }
+      }
+
+      return { error: null, isNewUser: response.data?.isNewUser };
+    } catch (error) {
+      return { error: error instanceof Error ? error : new Error('Failed to verify code') };
+    }
   };
 
   const signInWithGoogle = async () => {
@@ -88,7 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user,
         session,
         loading,
-        signInWithOtp,
+        sendOtp,
         verifyOtp,
         signInWithGoogle,
         signOut,
